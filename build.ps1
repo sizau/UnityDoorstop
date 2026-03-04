@@ -101,4 +101,7 @@ foreach ($a in $Arch) {
     if ($ScriptArgs -and $ScriptArgs.Count -gt 0) {
         & $XMAKE_EXE @ScriptArgs
     }
+    else {
+        & $XMAKE_EXE
+    }
 }
