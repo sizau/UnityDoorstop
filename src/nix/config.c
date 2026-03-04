@@ -33,6 +33,7 @@ void load_config() {
     get_env_bool("DOORSTOP_ENABLED", &config.enabled);
     get_env_bool("DOORSTOP_REDIRECT_OUTPUT_LOG", &config.redirect_output_log);
     get_env_bool("DOORSTOP_IGNORE_DISABLED_ENV", &config.ignore_disabled_env);
+    get_env_bool("DOORSTOP_IGNORE_INITIALIZED_ENV", &config.ignore_initialized_env);
     get_env_bool("DOORSTOP_MONO_DEBUG_ENABLED", &config.mono_debug_enabled);
     get_env_bool("DOORSTOP_MONO_DEBUG_SUSPEND", &config.mono_debug_suspend);
     try_get_env("DOORSTOP_MONO_DEBUG_ADDRESS", TEXT("127.0.0.1:10000"),
@@ -49,6 +50,7 @@ void load_config() {
     LOG("DOORSTOP_ENABLED: %d", config.enabled);
     LOG("DOORSTOP_REDIRECT_OUTPUT_LOG: %d", config.redirect_output_log);
     LOG("DOORSTOP_IGNORE_DISABLED_ENV: %d", config.ignore_disabled_env);
+    LOG("DOORSTOP_IGNORE_INITIALIZED_ENV: %d", config.ignore_initialized_env);
     LOG("DOORSTOP_MONO_DEBUG_ENABLED: %d", config.mono_debug_enabled);
     LOG("DOORSTOP_MONO_DEBUG_SUSPEND: %d", config.mono_debug_suspend);
     LOG("DOORSTOP_MONO_DEBUG_ADDRESS: %s", config.mono_debug_address);

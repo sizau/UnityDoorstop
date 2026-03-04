@@ -31,6 +31,10 @@ boot_config_override=
 # USE THIS ONLY WHEN ASKED TO OR YOU KNOW WHAT THIS MEANS
 ignore_disable_switch="0"
 
+# If enabled, DOORSTOP_INITIALIZED env var value is ignored
+# Useful for launchers/chains that leak env vars and block Doorstop bootstrap
+ignore_initialized_switch="0"
+
 # Mono Options
 
 # Overrides default Mono DLL search path
@@ -245,6 +249,11 @@ while [ $i -lt $max ]; do
             shift
             i=$((i+1))
         ;;
+        --doorstop-ignore-initialized-env)
+            ignore_initialized_switch="$(doorstop_bool "$2")"
+            shift
+            i=$((i+1))
+        ;;
         --doorstop-boot-config-override)
             boot_config_override="$2"
             shift
@@ -295,6 +304,7 @@ export DOORSTOP_ENABLED="$enabled"
 export DOORSTOP_TARGET_ASSEMBLY="$target_assembly"
 export DOORSTOP_BOOT_CONFIG_OVERRIDE="$boot_config_override"
 export DOORSTOP_IGNORE_DISABLED_ENV="$ignore_disable_switch"
+export DOORSTOP_IGNORE_INITIALIZED_ENV="$ignore_initialized_switch"
 export DOORSTOP_MONO_DLL_SEARCH_PATH_OVERRIDE="$dll_search_path_override"
 export DOORSTOP_MONO_DEBUG_ENABLED="$debug_enable"
 export DOORSTOP_MONO_DEBUG_ADDRESS="$debug_address"

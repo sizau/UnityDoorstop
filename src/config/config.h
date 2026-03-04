@@ -31,6 +31,14 @@ typedef struct {
     bool_t ignore_disabled_env;
 
     /**
+     * @brief Whether to ignore DOORSTOP_INITIALIZED.
+     *
+     * If enabled, Doorstop will continue bootstrap even if
+     * DOORSTOP_INITIALIZED environment variable is already set.
+     */
+    bool_t ignore_initialized_env;
+
+    /**
      * @brief Path to a managed assembly to invoke.
      */
     char_t *target_assembly;

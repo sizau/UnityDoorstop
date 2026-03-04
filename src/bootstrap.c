@@ -12,10 +12,14 @@ bool_t mono_debug_init_called = FALSE;
 bool_t mono_is_net35 = FALSE;
 
 void mono_doorstop_bootstrap(void *mono_domain) {
-    if (getenv(TEXT("DOORSTOP_INITIALIZED"))) {
+    char_t *initialized_env = getenv(TEXT("DOORSTOP_INITIALIZED"));
+    if (!config.ignore_initialized_env && initialized_env) {
         LOG("DOORSTOP_INITIALIZED is set! Skipping!");
+        shutenv(initialized_env);
         return;
     }
+    shutenv(initialized_env);
+
     setenv(TEXT("DOORSTOP_INITIALIZED"), TEXT("TRUE"), TRUE);
 
     mono.thread_set_main(mono.thread_current());

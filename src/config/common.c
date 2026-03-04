@@ -23,6 +23,7 @@ void cleanup_config() {
 void init_config_defaults() {
     config.enabled = FALSE;
     config.ignore_disabled_env = FALSE;
+    config.ignore_initialized_env = FALSE;
     config.redirect_output_log = FALSE;
     config.mono_debug_enabled = FALSE;
     config.mono_debug_suspend = FALSE;

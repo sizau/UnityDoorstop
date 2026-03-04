@@ -46,6 +46,18 @@ char_t *default_boot_config_path = NULL;
 char_t *new_cmdline_args = NULL;
 char *new_cmdline_args_narrow = NULL;
 
+typedef FARPROC(WINAPI *GetProcAddressFn)(HMODULE, LPCSTR);
+static GetProcAddressFn original_get_proc_address = NULL;
+
+static char const *loader_import_dlls[] = {
+    "kernel32.dll",
+    "kernelbase.dll",
+    "api-ms-win-core-libraryloader-l1-2-0.dll",
+    "api-ms-win-core-libraryloader-l1-1-0.dll",
+    "api-ms-win-core-libraryloader-l1-2-1.dll",
+    "api-ms-win-core-libraryloader-l1-2-2.dll",
+};
+
 LPWSTR WINAPI get_command_line_hook() {
     if (new_cmdline_args)
         return new_cmdline_args;
@@ -162,8 +174,64 @@ void *WINAPI get_proc_address_detour(void *module, char *name) {
     REDIRECT_INIT("mono_debug_init", load_mono_funcs, hook_mono_debug_init,
                   capture_mono_path(module));
 
+    if (original_get_proc_address)
+        return (void *)original_get_proc_address((HMODULE)module, name);
     return (void *)GetProcAddress(module, name);
 #undef REDIRECT_INIT
+}
+
+static bool_t install_get_proc_address_hook(HMODULE module,
+                                            char_t const *module_name) {
+    void *resolved_original = NULL;
+    bool_t ok = iat_hook_by_name(module, loader_import_dlls,
+                                 STR_LEN(loader_import_dlls), "GetProcAddress",
+                                 get_proc_address_detour, &resolved_original);
+
+    if (!ok) {
+        LOG("Failed to hook GetProcAddress in %s", module_name);
+        return FALSE;
+    }
+
+    if (!original_get_proc_address && resolved_original) {
+        original_get_proc_address = (GetProcAddressFn)resolved_original;
+        LOG("Captured original GetProcAddress at %p", original_get_proc_address);
+    }
+
+    return TRUE;
+}
+
+DWORD WINAPI late_unityplayer_hook_thread(LPVOID thread_parameter) {
+    bool_t hooked_unity = FALSE;
+    bool_t hooked_gameassembly = FALSE;
+    int attempts = 0;
+
+    while (attempts < 3000) {
+        HMODULE unity_player = GetModuleHandle(TEXT("UnityPlayer.dll"));
+        if (unity_player && !hooked_unity) {
+            LOG("Late UnityPlayer.dll detected, installing late GetProcAddress hook");
+            install_get_proc_address_hook(unity_player, TEXT("late-target"));
+            hooked_unity = TRUE;
+        }
+
+        HMODULE game_assembly = GetModuleHandle(TEXT("GameAssembly.dll"));
+        if (game_assembly && !hooked_gameassembly) {
+            LOG("Late GameAssembly.dll detected, installing late GetProcAddress hook");
+            install_get_proc_address_hook(game_assembly, TEXT("late-gameassembly"));
+            hooked_gameassembly = TRUE;
+        }
+
+        if (hooked_unity && hooked_gameassembly) {
+            break;
+        }
+
+        Sleep(20);
+        attempts++;
+    }
+
+    if (thread_parameter)
+        free(thread_parameter);
+
+    return 0;
 }
 
 void redirect_output_log(DoorstopPaths const *paths) {
@@ -210,9 +278,14 @@ void inject(DoorstopPaths const *paths) {
     LOG("Installing IAT hooks");
     bool_t ok = TRUE;
 
-#define HOOK_SYS(mod, from, to) ok &= iat_hook(mod, "kernel32.dll", &from, &to)
+#define HOOK_SYS(mod, from, to) ok &= iat_hook_any(mod, &from, &to)
 
-    HOOK_SYS(target_module, GetProcAddress, get_proc_address_detour);
+    ok &= install_get_proc_address_hook(target_module, TEXT("target"));
+    if (target_module != app_module) {
+        if (!install_get_proc_address_hook(app_module, TEXT("app"))) {
+            LOG("Optional GetProcAddress hook failed in app module");
+        }
+    }
     HOOK_SYS(target_module, CloseHandle, close_handle_hook);
     if (config.boot_config_override) {
         if (file_exists(config.boot_config_override)) {
@@ -236,11 +309,18 @@ void inject(DoorstopPaths const *paths) {
     HOOK_SYS(app_module, GetCommandLineW, get_command_line_hook);
     HOOK_SYS(app_module, GetCommandLineA, get_command_line_hook_narrow);
 
-    // New Unity with separate UnityPlyer.dll
+    // New Unity with separate UnityPlayer.dll
     if (target_module != app_module) {
         HOOK_SYS(target_module, GetCommandLineW, get_command_line_hook);
         HOOK_SYS(target_module, GetCommandLineA, get_command_line_hook_narrow);
     }
+
+    // Some games load UnityPlayer.dll / GameAssembly.dll later. Retry late
+    // GetProcAddress hook in background in all cases.
+    void *thread_param = calloc(1, sizeof(int));
+    if (thread_param)
+        CreateThread(NULL, 0, late_unityplayer_hook_thread, thread_param, 0,
+                     NULL);
 
 #undef HOOK_SYS
 

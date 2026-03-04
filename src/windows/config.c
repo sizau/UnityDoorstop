@@ -67,6 +67,8 @@ static inline void init_config_file() {
                    &config.enabled);
     load_bool_file(config_path, TEXT("General"), TEXT("ignore_disable_switch"),
                    TEXT("false"), &config.ignore_disabled_env);
+    load_bool_file(config_path, TEXT("General"), TEXT("ignore_initialized_switch"),
+                   TEXT("false"), &config.ignore_initialized_env);
     load_bool_file(config_path, TEXT("General"), TEXT("redirect_output_log"),
                    TEXT("false"), &config.redirect_output_log);
     load_path_file(config_path, TEXT("General"), TEXT("target_assembly"),
